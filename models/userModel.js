@@ -1,37 +1,46 @@
+const mongoose = require("mongoose");
 
-const mongoose = require('mongoose');
+const bcrypt = require("bcryptjs");
+const validator = require("validator");
 
-const bcrypt = require('bcryptjs');
+const Schema = mongoose.Schema;
 
-const Schema = mongoose.Schema
-
-const userSchema = new Schema ({
-
-    email : {
-        type: String,
-        required: true,
-        unique: true
-    },
-    password : {
-        type: String,
-        required: true,
-        minlength: 8
-    }
-})
+const userSchema = new Schema({
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+});
 
 // static signup method
-userSchema.statics.signup = async function (email, password)  {
+userSchema.statics.signup = async function (email, password) {
+  // validation
 
-        const exists = await this.findOne({email})
-        if (exists) {
-            throw new Error('Email already exists')
-        }
+  if (!email || !password) {
+    throw new Error("Please provide email and password");
+  }
 
-        const hashedPassword = await bcrypt.hash(password, 10)
-        const user = await this.create({email, password: hashedPassword})
+  if (!validator.isEmail(email)) {
+    throw new Error("Invalid email");
+  }
+  if (!validator.isStrongPassword(password)) {
+    throw new Error("Password is weak");
+  }
 
-        return user
+  const exists = await this.findOne({ email });
+  if (exists) {
+    throw new Error("Email already exists");
+  }
 
-}
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const user = await this.create({ email, password: hashedPassword });
 
-module.exports = mongoose.model('User', userSchema)
+  return user;
+};
+
+module.exports = mongoose.model("User", userSchema);
