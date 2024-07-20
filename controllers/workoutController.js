@@ -31,38 +31,37 @@ const getWorkout = async (req, res) => {
 
 // create a new workout
 
-const createWorkout =  async (req, res) => {
-    const { title, load, reps } = req.body;
-
+const createWorkout = async (req, res) => {
+    const { title, load, reps, category, duration, caloriesBurned, notes } = req.body;
 
     let emptyFields = []
 
-   if (!title) {
-    emptyFields.push("title")
-   } 
-   if (!load) {
-    emptyFields.push("load")
-   }
-   if (!reps) {
-    emptyFields.push("reps")
-   }
+    if (!title) emptyFields.push("title");
+    if (!load) emptyFields.push("load");
+    if (!reps) emptyFields.push("reps");
+    if (!category) emptyFields.push("category");
+    if (!duration) emptyFields.push("duration");
    
-   if (emptyFields.length > 0) {
-    return res.status(400).json({ error: `Please provide values for: ${emptyFields.join(", ")}` });
-   }
+    if (emptyFields.length > 0) {
+        return res.status(400).json({ error: `Please provide values for: ${emptyFields.join(", ")}` });
+    }
 
     // add doc to db
     try {
-        const user_id = req.user._id
-      const workout = await Workout.create({
-        title,
-        load,
-        reps,
-        user_id,
-      });
-      res.status(200).json(workout);
+        const user_id = req.user._id;
+        const workout = await Workout.create({
+            title,
+            load,
+            reps,
+            category,
+            duration,
+            caloriesBurned,  
+            notes,           
+            user_id,
+        });
+        res.status(200).json(workout);
     } catch (error) {
-      res.status(400).json({ error: error.message });
+        res.status(400).json({ error: error.message });
     }
 }
 
