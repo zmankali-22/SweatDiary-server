@@ -59,7 +59,7 @@ const users = [
   },
   {
     email: 'jane@example.com',
-    password: 'StrongPass456!',
+    password: 'Password123!',
     workouts: [
       {
         title: 'Yoga Flow',
@@ -110,7 +110,7 @@ const users = [
   },
   {
     email: 'bob@example.com',
-    password: 'SecurePassword789!',
+    password: 'Password123!',
     workouts: [
       {
         title: 'Deadlift ',
@@ -161,7 +161,7 @@ const users = [
   },
   {
     email: 'alice@example.com',
-    password: 'ComplexPass321!',
+    password: 'Password123!',
     workouts: [
       {
         title: 'Barre Class',
