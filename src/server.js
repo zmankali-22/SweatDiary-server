@@ -8,6 +8,8 @@ const workoutRoutes = require("./routes/workout")
 const userRoutes = require("./routes/user")
 const statsRoutes = require('./routes/stats');
 
+const PORT = process.env.PORT || 3000
+
 // express app
 const app = express();
 
@@ -34,8 +36,8 @@ const startServer = async () => {
     try {
         await mongoose.connect(process.env.MONGO_URI);
         // listen to requests
-        app.listen(process.env.PORT, () => {
-            console.log(' connected to DB and Server is listening on port', process.env.PORT);
+        app.listen(PORT, () => {
+            console.log(' connected to DB and Server is listening on port', PORT);
         });
     } catch (error) {
         console.log(error);
