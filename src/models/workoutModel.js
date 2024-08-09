@@ -36,7 +36,7 @@ const workoutSchema = new Schema(
     category: {
       type: String,
       required: true,
-    }, // e.g., 'Cardio', 'Strength', 'Flexibility'
+    }, 
   },
 
   {
