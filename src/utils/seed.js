@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 
 const users = [
   {
-    email: 'john@example.com',
+    email: 'john@mail.com',
     password: 'Password123!',
     workouts: [
       {
@@ -58,7 +58,7 @@ const users = [
     ]
   },
   {
-    email: 'jane@example.com',
+    email: 'jane@mail.com',
     password: 'Password123!',
     workouts: [
       {
@@ -109,7 +109,7 @@ const users = [
     ]
   },
   {
-    email: 'bob@example.com',
+    email: 'bob@mail',
     password: 'Password123!',
     workouts: [
       {
@@ -160,7 +160,7 @@ const users = [
     ]
   },
   {
-    email: 'alice@example.com',
+    email: 'alice@mail.com',
     password: 'Password123!',
     workouts: [
       {
