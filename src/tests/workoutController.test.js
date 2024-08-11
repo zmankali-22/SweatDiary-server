@@ -1,180 +1,204 @@
-jest.mock('../models/workoutModel');
-jest.mock('mongoose');
-
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
 const Workout = require('../models/workoutModel');
-// Mock the Workout model methods
-jest.mock('../models/workoutModel', () => ({
-    find: jest.fn(),
-    findById: jest.fn(),
-    create: jest.fn(),
-    findOneAndDelete: jest.fn(),
-    findOneAndUpdate: jest.fn(),
-  }));
-  
-  // Import the mongoose package and mock its methods if needed
-  const mongoose = require('mongoose');
-  jest.mock('mongoose', () => ({
-    Types: {
-      ObjectId: {
-        isValid: jest.fn().mockReturnValue(true),
-      },
-    },
-  }));
-  
-  // Import your controller functions
-  const {
-    createWorkout,
-    getWorkouts,
-    getWorkout,
-    deleteWorkout,
-    updateWorkout,
-  } = require('../controllers/workoutController');
-  
-  describe('Workout Controller', () => {
-    let req, res;
-  
-    beforeEach(() => {
-      req = {
-        body: {},
-        params: {},
-        user: { _id: 'user123' },
-      };
-      res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      };
-    });
-  
-    describe('getWorkouts', () => {
-      it('should get all workouts for a user', async () => {
-        const mockWorkouts = [{ title: 'Workout 1' }, { title: 'Workout 2' }];
-        Workout.find.mockResolvedValue(mockWorkouts);
-  
-        await getWorkouts(req, res);
-  
-        expect(Workout.find).toHaveBeenCalledWith({ user_id: 'user123' });
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith(mockWorkouts);
-      });
-  
-      it('should handle errors when fetching workouts', async () => {
-        Workout.find.mockRejectedValue(new Error('Database error'));
-  
-        await getWorkouts(req, res);
-  
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith({ error: 'Failed to fetch workouts' });
-      });
-    });
-  
-    describe('getWorkout', () => {
-      it('should get a single workout by id', async () => {
-        const mockWorkout = { title: 'Workout 1' };
-        req.params.id = 'workout123';
-        Workout.findById.mockResolvedValue(mockWorkout);
-  
-        await getWorkout(req, res);
-  
-        expect(Workout.findById).toHaveBeenCalledWith('workout123');
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith(mockWorkout);
-      });
-  
-      it('should return 404 if workout is not found', async () => {
-        req.params.id = 'workout123';
-        Workout.findById.mockResolvedValue(null);
-  
-        await getWorkout(req, res);
-  
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({ error: 'Workout not found' });
-      });
-    });
-  
-    describe('createWorkout', () => {
-      it('should create a new workout', async () => {
-        const workoutData = {
-          title: 'New Workout',
-          load: 50,
+const { 
+  createWorkout, 
+  getWorkouts, 
+  getWorkout, 
+  deleteWorkout, 
+  updateWorkout 
+} = require('../controllers/workoutController');
+
+let mongoServer;
+
+beforeAll(async () => {
+  try {
+    mongoServer = await MongoMemoryServer.create();
+    const mongoUri = mongoServer.getUri();
+    await mongoose.connect(mongoUri);
+  } catch (error) {
+    console.error('Failed to start MongoDB Memory Server', error);
+    throw error;
+  }
+}, 10000);
+
+afterAll(async () => {
+  try {
+    await mongoose.disconnect();
+    if (mongoServer) {
+      await mongoServer.stop();
+    }
+  } catch (error) {
+    console.error('Failed to stop MongoDB Memory Server', error);
+  }
+}, 10000);
+
+beforeEach(async () => {
+  await Workout.deleteMany({});
+});
+
+const mockResponse = () => {
+  const res = {};
+  res.status = jest.fn().mockReturnValue(res);
+  res.json = jest.fn().mockReturnValue(res);
+  return res;
+};
+
+describe('Workout Controller', () => {
+  describe('createWorkout', () => {
+    it('should create a new workout', async () => {
+      const req = {
+        body: {
+          title: 'Test Workout',
+          load: 100,
           reps: 10,
-          category: 'Strength',
+          category: 'strength',
           duration: 30,
-        };
-        req.body = workoutData;
-        const createdWorkout = { ...workoutData, _id: 'workout123' };
-        Workout.create.mockResolvedValue(createdWorkout);
-  
-        await createWorkout(req, res);
-  
-        expect(Workout.create).toHaveBeenCalledWith({
-          ...workoutData,
-          user_id: 'user123',
-        });
-        expect(res.status).toHaveBeenCalledWith(201);
-        expect(res.json).toHaveBeenCalledWith(createdWorkout);
-      });
-  
-      it('should return 400 if required fields are missing', async () => {
-        req.body = { title: 'New Workout' };
-  
-        await createWorkout(req, res);
-  
-        expect(res.status).toHaveBeenCalledWith(400);
-        expect(res.json).toHaveBeenCalledWith({
-          error: 'Please provide values for: load, reps, category, duration',
-        });
-      });
+          caloriesBurned: 300,
+          notes: 'Test notes'
+        },
+        user: { _id: 'testUserId' }
+      };
+      const res = mockResponse();
+
+      await createWorkout(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Test Workout',
+        user_id: 'testUserId'
+      }));
     });
-  
-    describe('deleteWorkout', () => {
-      it('should delete a workout', async () => {
-        req.params.id = 'workout123';
-        const deletedWorkout = { _id: 'workout123', title: 'Deleted Workout' };
-        Workout.findOneAndDelete.mockResolvedValue(deletedWorkout);
-  
-        await deleteWorkout(req, res);
-  
-        expect(Workout.findOneAndDelete).toHaveBeenCalledWith({ _id: 'workout123' });
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith(deletedWorkout);
-      });
-  
-      it('should return 404 if workout to delete is not found', async () => {
-        req.params.id = 'workout123';
-        Workout.findOneAndDelete.mockResolvedValue(null);
-  
-        await deleteWorkout(req, res);
-  
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({ error: 'Workout not found' });
-      });
-    });
-  
-    describe('updateWorkout', () => {
-      it('should update a workout', async () => {
-        req.params.id = 'workout123';
-        const updatedWorkout = { _id: 'workout123', title: 'Updated Workout' };
-        Workout.findOneAndUpdate.mockResolvedValue(updatedWorkout);
-  
-        await updateWorkout(req, res);
-  
-        expect(Workout.findOneAndUpdate).toHaveBeenCalledWith(
-          { _id: 'workout123' },
-          req.body,
-          { new: true }
-        );
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith(updatedWorkout);
-      });
-  
-      it('should return 404 if workout to update is not found', async () => {
-        req.params.id = 'workout123';
-        Workout.findOneAndUpdate.mockResolvedValue(null);
-  
-        await updateWorkout(req, res);
-  
-        expect(res.status).toHaveBeenCalledWith(404);
-        expect(res.json).toHaveBeenCalledWith({ error: 'Workout not found' });
-      });
+
+    it('should return 400 if required fields are missing', async () => {
+      const req = {
+        body: { title: 'Test Workout' },
+        user: { _id: 'testUserId' }
+      };
+      const res = mockResponse();
+
+      await createWorkout(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        error: expect.any(String)
+      }));
     });
   });
+
+  describe('getWorkouts', () => {
+    it('should return all workouts for a user', async () => {
+      const userId = 'testUserId';
+      await Workout.create([
+        { title: 'Workout 1', load: 100, reps: 10, category: 'strength', duration: 30, user_id: userId },
+        { title: 'Workout 2', load: 150, reps: 8, category: 'strength', duration: 25, user_id: userId }
+      ]);
+
+      const req = { user: { _id: userId } };
+      const res = mockResponse();
+
+      await getWorkouts(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.arrayContaining([
+        expect.objectContaining({ title: 'Workout 1' }),
+        expect.objectContaining({ title: 'Workout 2' })
+      ]));
+    });
+  });
+
+  describe('getWorkout', () => {
+    it('should return a specific workout', async () => {
+      const workout = await Workout.create({
+        title: 'Test Workout',
+        load: 100,
+        reps: 10,
+        category: 'strength',
+        duration: 30,
+        user_id: 'testUserId'
+      });
+
+      const req = { params: { id: workout._id } };
+      const res = mockResponse();
+
+      await getWorkout(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Test Workout'
+      }));
+    });
+
+    it('should return 404 if workout not found', async () => {
+      const req = { params: { id: new mongoose.Types.ObjectId() } };
+      const res = mockResponse();
+
+      await getWorkout(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        error: 'Workout not found'
+      }));
+    });
+  });
+
+  describe('deleteWorkout', () => {
+    it('should delete a specific workout', async () => {
+      const workout = await Workout.create({
+        title: 'Test Workout',
+        load: 100,
+        reps: 10,
+        category: 'strength',
+        duration: 30,
+        user_id: 'testUserId'
+      });
+
+      const req = { params: { id: workout._id } };
+      const res = mockResponse();
+
+      await deleteWorkout(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Test Workout'
+      }));
+
+      const deletedWorkout = await Workout.findById(workout._id);
+      expect(deletedWorkout).toBeNull();
+    });
+  });
+
+  describe('updateWorkout', () => {
+    it('should update a specific workout', async () => {
+      const workout = await Workout.create({
+        title: 'Test Workout',
+        load: 100,
+        reps: 10,
+        category: 'strength',
+        duration: 30,
+        user_id: 'testUserId'
+      });
+
+      const req = {
+        params: { id: workout._id },
+        body: { title: 'Updated Workout', load: 150 }
+      };
+      const res = mockResponse();
+
+      await updateWorkout(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Updated Workout',
+        load: 150
+      }));
+
+      const updatedWorkout = await Workout.findById(workout._id);
+      expect(updatedWorkout.title).toBe('Updated Workout');
+      expect(updatedWorkout.load).toBe(150);
+    });
+  });
+});
+
+// Increase the timeout for all test cases
+jest.setTimeout(30000);

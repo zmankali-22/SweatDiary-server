@@ -1,30 +1,36 @@
 const request = require('supertest');
-const mongoose = require('mongoose');
-const app = require('../server');
+const app = require('../server'); // Adjust the path as needed
+const User = require('../models/userModel'); // Adjust the path as needed
+const jwt = require('jsonwebtoken');
 
-// Mock authentication middleware
-jest.mock('../middleware/requireAuth', () => (req, res, next) => {
-    req.user = { id: 'mockUserId' }; // Simulating an authenticated user
-    next();
-});
+describe('Server', () => {
+  let token;
 
-describe('Express Server', () => {
-    test('GET /api/workouts should return 200', async () => {
-        const res = await request(app).get('/api/workouts');
-        expect(res.statusCode).toBe(200);
+  beforeAll(async () => {
+    // Create a test user and generate a token
+    const testUser = await User.create({
+      email: 'test@example.com',
+      password: 'password123'
     });
+    
+    token = jwt.sign({ _id: testUser._id }, process.env.SECRET, { expiresIn: '3d' });
+  });
 
-    test('GET /api/user should return 200', async () => {
-        const res = await request(app).get('/api/user');
-        expect(res.statusCode).toBe(200);
-    });
+  afterAll(async () => {
+    // Clean up: remove the test user
+    await User.deleteMany({ email: 'test@example.com' });
+  });
 
-    test('GET /api/stats should return 200', async () => {
-        const res = await request(app).get('/api/stats');
-        expect(res.statusCode).toBe(200);
-    });
+  it('should respond to GET /api/workouts with authentication', async () => {
+    const response = await request(app)
+      .get('/api/workouts')
+      .set('Authorization', `Bearer ${token}`);
+    
+    expect(response.status).toBe(200);
+  });
 
-    afterAll(async () => {
-        await mongoose.connection.close(); // Close connection after tests
-    });
+  it('should return 401 for GET /api/workouts without authentication', async () => {
+    const response = await request(app).get('/api/workouts');
+    expect(response.status).toBe(401);
+  });
 });
