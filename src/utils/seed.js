@@ -109,7 +109,7 @@ const users = [
     ]
   },
   {
-    email: 'bob@mail',
+    email: 'bob@mail.com',
     password: 'Password123!',
     workouts: [
       {
